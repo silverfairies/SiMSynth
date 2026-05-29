@@ -1,5 +1,5 @@
 [package]
-name = "simple-music-synthetizer"
+name = "simple-music-synthesizer"
 version = "0.1.0"
 edition = "2024"
 
