@@ -4,3 +4,10 @@ A simple synthesizer GUI program written in Rust.
 It must have a possibility to play multiple sounds, as well as them at once without the degradation of quality.
 It should have an out-of-the-box expirience, but also a configuration for additional customization (UI, keybinds, sounds, if they are only preset).
 It may have unbound notes, keyboard driven expirience, a way to save and read the music back, a way to export to a widespread musical format (MP3 or other).
+
+Other things to make:
+[ ] README.md
+[ ] Choose licence (Apache or GPL?)
+[ ] Write documentation
+[ ] Translate documentation into german
+[ ] Upload to github
