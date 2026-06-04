@@ -1,0 +1,97 @@
+class Sound
+[
+   - frequency : int
+   - symbol : String
+]
+new ( frequency : int, symbol : String )
+{
+   + getFrequency () : int
+   + getSymbol () : String
+}
+class Button 
+[
+   - sound : Sound
+   - playState : boolean
+   - button : Button
+]
+new ( sound : Sound )
+{
+   + togglePlay () : boolean
+}
+class SoundMap
+[
+   - scale : Sound[]
+   - name : String
+]
+new ( frequencies : int[], name : String )
+{
+   + loadButtons () : void
+
+class Recording
+class Environment
+
+### PLANTUML CODE ###
+
+@startuml
+
+skinparam classAttributeIconSize 0
+
+class Sound {
+   - frequency : u32
+   - symbol : String
+   + new ( frequency : int, symbol : String ) : Sound
+   + getFrequency ( &self ) : u32
+   + getSymbol ( &self ) : String
+}
+
+class Button 
+{
+   - sound : &Sound
+   - playState : boolean
+   - button : libButton
+   + new ( sound : &Sound )
+   + togglePlay ( &self ) : boolean
+}
+
+Sound "1" <-- "1" Button
+Sound "1..*" --o "1" SoundMap
+
+class SoundMap
+{
+   - scale : Vec<Sound>
+   - name : String
+   + new ( frequencies : Vec<i32>, name : String )
+   + loadButtons ( &self, env : &Environment ) : Vec<Button>
+}
+
+SoundMap "1" --> "1..*" Button
+
+class Recording
+{
+   - scale : &SoundMap
+   - name : String
+   - length : i32
+   - playback : HashMap<i32, Sound>
+   + record ( env : &Environment )
+   + getSoundMap ( &self ) : &SoundMap
+   + getName ( &self ) : String
+   + getLength ( &self ) : i32
+}
+
+Recording "0..*" o-- "1" SoundMap
+
+class Environment
+{
+   - scale : &SoundMap
+   - recording : boolean
+   - buttons : Vec<Button>
+   + new ( scale : &SoundMap )
+   + getScale ( &self ) : &SoundMap
+   + loadScale ( &self, scale : &SoundMap ) : void
+   + getButtons ( &self ) : &Vec<Button>
+}
+
+Environment "1" *-- "0..*" Button
+Environment "1" <-- "0..1" SoundMap
+
+@enduml
