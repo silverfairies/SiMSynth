@@ -5,10 +5,10 @@ It must have a possibility to play multiple sounds, as well as them at once with
 It should have an out-of-the-box expirience, but also a configuration for additional customization (UI, keybinds, sounds, if they are only preset).
 It may have unbound notes, keyboard driven expirience, a way to save and read the music back, a way to export to a widespread musical format (MP3 or other).
 
-All the code would be written by me, except of course dependencies. Althrough for new for me tasks some code may be taken from online documentation, StackOverflow or some learning cites.
+No AI was used in the project. For new for me tasks some code may be coming from online documentation, StackOverflow or some learning cites.
 
 Other things to make:
-[ ] UML diagram
+[X] UML diagram
 [ ] README.md
 [ ] Choose licence (Apache or GPL?)
 [ ] Write documentation
