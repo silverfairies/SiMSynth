@@ -5,19 +5,15 @@ use rodio::mixer::Mixer;
 use rodio::source::SineWave;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::thread;
 use std::time::Duration;
+use std::{thread, vec};
 
 fn main() {
-    let sc = SoundMap {
-        name: String::from("test"),
-    };
-    let env = Environment::new(&sc);
-    println!("{:#?}", env);
-    let stream_handle = rodio::DeviceSinkBuilder::from_default_device()
+    let mut stream_handle = rodio::DeviceSinkBuilder::from_default_device()
         .unwrap()
         .open_stream()
         .unwrap();
+    stream_handle.log_on_drop(false);
     let mixer = stream_handle.mixer();
 
     let beep0 = Sound::new(440.0, mixer);
@@ -72,6 +68,7 @@ impl Environment<'_> {
 #[derive(Debug)]
 struct SoundMap {
     name: String,
+    scale: Vec<f32>,
 }
 
 #[derive(Debug)]
