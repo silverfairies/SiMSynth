@@ -68,9 +68,18 @@ fn main() -> eframe::Result {
     )
 }
 
-#[derive(Default)]
 struct SiSApp {
     env: Environment,
+    scales: Vec<SoundMap>,
+}
+
+impl Default for SiSApp {
+    fn default() -> Self {
+        Self {
+            env: Environment::default(),
+            scales: vec![SIMPLE3SCALE, STANDART8SCALE],
+        }
+    }
 }
 
 impl SiSApp {
@@ -87,12 +96,29 @@ impl eframe::App for SiSApp {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show_inside(ui, |ui| {
             ui.heading("Hello World!");
-            if ui.button("Test").clicked() {
-                self.env.buttons[0].toggle();
-            }
+            ui.horizontal_top(|ui| {
+                for sound in &self.env.buttons {
+                    if ui
+                        .toggle_value(&mut false, sound.frequency.to_string())
+                        .clicked()
+                    {
+                        sound.toggle();
+                    }
+                }
+            });
             if ui.button("init").clicked() {
                 self.env.init();
             }
+            egui::ComboBox::from_label("Scale")
+                .selected_text(self.env.scale.name)
+                .show_ui(ui, |ui| {
+                    for scale in &self.scales {
+                        if ui.selectable_label(false, scale.name).clicked() {
+                            self.env.scale = scale.clone();
+                            self.env.init();
+                        }
+                    }
+                })
         });
     }
 }
@@ -114,13 +140,15 @@ impl Environment {
         //stream_handle.log_on_drop(false);
         let mixer = stream_handle.mixer();
 
-        Environment {
+        let mut env = Environment {
             scale,
             recording: false,
             buttons: vec![],
             mixer: mixer.to_owned(),
             sink: stream_handle,
-        }
+        };
+        env.init();
+        env
     }
 
     fn init(&mut self) {
@@ -130,7 +158,7 @@ impl Environment {
 
         self.buttons = Vec::new();
 
-        for frequency in &self.scale.scale {
+        for frequency in self.scale.scale {
             self.buttons
                 .push(Sound::new(frequency.clone(), &self.mixer));
         }
@@ -139,16 +167,20 @@ impl Environment {
 
 impl Default for Environment {
     fn default() -> Self {
-        Self::new(SoundMap {
-            name: String::from_str("Test").unwrap(),
-            scale: vec![440.0, 527.57],
-        })
+        Self::new(SIMPLE3SCALE)
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct SoundMap {
-    name: String,
-    scale: Vec<f32>,
+    name: &'static str,
+    scale: &'static [f32],
+}
+
+impl SoundMap {
+    const fn new(name: &'static str, scale: &'static [f32]) -> Self {
+        Self { name, scale }
+    }
 }
 
 pub struct Button {}
@@ -210,3 +242,12 @@ impl Sound {
         self.paused.store(pause, Ordering::Relaxed);
     }
 }
+
+const STANDART8SCALE: SoundMap = SoundMap::new(
+    "Western A scale",
+    &[
+        440.00, 493.88, 523.25, 587.33, 659.26, 698.46, 783.99, 880.00,
+    ],
+);
+
+const SIMPLE3SCALE: SoundMap = SoundMap::new("Simple test scale", &[440.00, 587.33]);
