@@ -95,11 +95,17 @@ impl SiSApp {
 impl eframe::App for SiSApp {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show_inside(ui, |ui| {
-            ui.heading("Hello World!");
+            ui.heading(format!(
+                "Simple Music Synthetizer: {}",
+                std::env::var("CARGO_PKG_VERSION").unwrap()
+            ));
             ui.horizontal_top(|ui| {
                 for sound in &self.env.buttons {
                     if ui
-                        .toggle_value(&mut false, sound.frequency.to_string())
+                        .toggle_value(
+                            &mut sound.paused.load(Ordering::Relaxed),
+                            sound.frequency.to_string(),
+                        )
                         .clicked()
                     {
                         sound.toggle();
@@ -238,8 +244,9 @@ impl Sound {
         }
     }
 
-    fn change_state(&self, pause: bool) {
+    fn change_state(&self, pause: bool) -> bool {
         self.paused.store(pause, Ordering::Relaxed);
+        pause
     }
 }
 
