@@ -1,4 +1,4 @@
-Simple Music Synthetizer (SMS)
+Simple Music Synthesizer (SiMSynth)
 A simple synthesizer GUI program written in Rust.
 
 It must have a possibility to play multiple sounds, as well as them at once without the degradation of quality.

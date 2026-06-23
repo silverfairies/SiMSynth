@@ -1,16 +1,18 @@
-#![allow(unused)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use eframe::egui;
-use egui::WidgetText::RichText;
+use egui_winit::winit;
+use egui_winit::winit::application::ApplicationHandler;
+use egui_winit::winit::platform::scancode::PhysicalKeyExtScancode;
 use rodio::mixer::Mixer;
 use rodio::source::SineWave;
 use rodio::{MixerDeviceSink, Source};
-use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
-use std::{thread, vec};
+use std::vec;
+
+const VERSION: &str = "0.2.0-alpha";
 
 fn main() -> eframe::Result {
     env_logger::init();
@@ -22,45 +24,6 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
 
-    /*
-    let mut stream_handle = rodio::DeviceSinkBuilder::from_default_device()
-        .unwrap()
-        .open_stream()
-        .unwrap();
-    stream_handle.log_on_drop(false);
-    let mixer = stream_handle.mixer();
-
-    let beep0 = Sound::new(440.0, mixer);
-    let beep1 = Sound::new(523.25, mixer);
-    let beep2 = Sound::new(659.26, mixer);
-
-    beep0.play();
-    beep1.play();
-    beep2.play();
-
-    thread::sleep(Duration::from_millis(1500));
-
-    beep1.pause();
-    beep2.pause();
-
-    thread::sleep(Duration::from_millis(1500));
-
-    beep0.pause();
-    beep1.play();
-
-    thread::sleep(Duration::from_millis(1500));
-
-    beep1.pause();
-    beep2.play();
-
-    thread::sleep(Duration::from_millis(1500));
-
-    beep0.play();
-    beep1.play();
-    beep2.drop();
-
-    thread::sleep(Duration::from_millis(1500));
-    */
     eframe::run_native(
         "SimpSynth",
         native_options,
@@ -73,32 +36,53 @@ struct SiSApp {
     scales: Vec<SoundMap>,
 }
 
-impl Default for SiSApp {
-    fn default() -> Self {
-        Self {
-            env: Environment::default(),
-            scales: vec![SIMPLE3SCALE, STANDART8SCALE],
-        }
-    }
-}
-
 impl SiSApp {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_global_style.
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
-        Self::default()
+        //let wtest = cc.display_handle().unwrap();
+        //let rtest = wtest.as_raw();
+        cc.egui_ctx.enable_accesskit();
+        Self {
+            env: Environment::default(),
+            scales: vec![SIMPLE2A4SCALE0, WESTERN8A4SCALE, WESTERN8C4SCALE],
+        }
     }
 }
 
+#[allow(unused)]
+impl ApplicationHandler for SiSApp {
+    // TODO: Code to try to obtain keycodes. This implementation DOES NOT YET WORK
+    fn window_event(
+        &mut self,
+        event_loop: &winit::event_loop::ActiveEventLoop,
+        window_id: winit::window::WindowId,
+        event: winit::event::WindowEvent,
+    ) {
+        if let winit::event::WindowEvent::KeyboardInput {
+            device_id,
+            event,
+            is_synthetic,
+        } = event
+        {
+            println!("{}", event.physical_key.to_scancode().unwrap());
+        }
+    }
+
+    fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {}
+}
+
 impl eframe::App for SiSApp {
-    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show_inside(ui, |ui| {
             ui.heading(format!(
-                "Simple Music Synthetizer: " //std::env::var("CARGO_PKG_VERSION").unwrap()
+                "Simple Music Synthetizer: {}",
+                VERSION //std::env::var("CARGO_PKG_VERSION").unwrap()
             ));
             ui.horizontal_top(|ui| {
+                //Dynamic generation of Buttons for each sound
                 for sound in &self.env.buttons {
                     if ui
                         .toggle_value(
@@ -111,16 +95,46 @@ impl eframe::App for SiSApp {
                     }
                 }
             });
-            if ui.button("init").clicked() {
-                self.env.init();
+            if ui.button("reload").clicked() {
+                self.env.reload();
             }
-            egui::ComboBox::from_label("Scale")
+
+            // Attempt at a keyboard handler. Only works for the fers two buttons yet, a and s keys correspondigly
+            // TODO: reimplement with a dynamic generation
+            //let wtest = frame.winit_window().unwrap();
+            let input = ui.input(|i| i.events.clone());
+            if !input.is_empty() {
+                //println!("Something happened: {:?}", input);
+                for ievent in input {
+                    if let egui::Event::Key {
+                        key: _,
+                        physical_key,
+                        pressed: _,
+                        repeat: false,
+                        modifiers: _,
+                    } = ievent
+                    {
+                        match physical_key.unwrap() {
+                            egui::Key::A => {
+                                println!("Something happened!");
+                                self.env.buttons[0].toggle();
+                            }
+                            egui::Key::S => {
+                                self.env.buttons[1].toggle();
+                            }
+                            _ => (),
+                        }
+                    }
+                }
+            }
+
+            egui::ComboBox::from_label("Scale") //Dropdown menu to choose the set of sounds
                 .selected_text(self.env.scale.name)
                 .show_ui(ui, |ui| {
                     for scale in &self.scales {
                         if ui.selectable_label(false, scale.name).clicked() {
-                            self.env.scale = scale.clone();
-                            self.env.init();
+                            self.env.scale = scale.to_owned();
+                            self.env.reload();
                         }
                     }
                 })
@@ -129,16 +143,18 @@ impl eframe::App for SiSApp {
 }
 
 struct Environment {
+    //here are is all the relevant information for the curent session stored
     scale: SoundMap,
-    recording: bool,
+    //recording: bool,
     buttons: Vec<Sound>,
-    sink: MixerDeviceSink,
+    _sink: MixerDeviceSink,
     mixer: Mixer,
 }
 
 impl Environment {
+    //Gets a MixerDeviceSink and a Mixer to put sound information into
     fn new(scale: SoundMap) -> Environment {
-        let mut stream_handle = rodio::DeviceSinkBuilder::from_default_device()
+        let stream_handle = rodio::DeviceSinkBuilder::from_default_device()
             .unwrap()
             .open_stream()
             .unwrap();
@@ -147,16 +163,17 @@ impl Environment {
 
         let mut env = Environment {
             scale,
-            recording: false,
+            //recording: false,
             buttons: vec![],
             mixer: mixer.to_owned(),
-            sink: stream_handle,
+            _sink: stream_handle,
         };
-        env.init();
+        env.reload();
         env
     }
 
-    fn init(&mut self) {
+    //Regeneration of buttons
+    fn reload(&mut self) {
         for sound in &self.buttons {
             sound.drop();
         }
@@ -165,44 +182,49 @@ impl Environment {
 
         for frequency in self.scale.scale {
             self.buttons
-                .push(Sound::new(frequency.clone(), &self.mixer));
+                .push(Sound::new(frequency.to_owned(), &self.mixer));
         }
     }
 }
 
 impl Default for Environment {
     fn default() -> Self {
-        Self::new(SIMPLE3SCALE)
+        Self::new(SIMPLE2A4SCALE0)
     }
 }
 
+//Struct for scales
 #[derive(Clone, Copy)]
 pub struct SoundMap {
     name: &'static str,
     scale: &'static [f32],
+    //row: u32,
 }
 
 impl SoundMap {
-    const fn new(name: &'static str, scale: &'static [f32]) -> Self {
-        Self { name, scale }
+    const fn new(name: &'static str, scale: &'static [f32], _row: u32) -> Self {
+        Self {
+            name,
+            scale, /*, row */
+        }
     }
 }
 
-pub struct Button {}
-
+//Access to sounds given to the Mixer. Paused and dropped are used to control the corresponding sound. Frequency is saved for naming purposes.
 pub struct Sound {
     pub frequency: f32,
     paused: Arc<AtomicBool>,
     dropped: Arc<AtomicBool>,
 }
 
+//Creates a sinewave, makes it pausable and skippable, with a periodic_access to pause/resume/drop. Passes the vawe to the given Mixer, innitialy paused, so it doesn't play when not needed.
 impl Sound {
     pub fn new(frequency: f32, mixer: &Mixer) -> Self {
-        let pause_sound = Arc::new(AtomicBool::new(true));
-        let clone_pause_sound = pause_sound.clone();
+        let paused = Arc::new(AtomicBool::new(true));
+        let clone_pause_sound = paused.clone();
         let dropped = Arc::new(AtomicBool::new(false));
         let clone_dropped = dropped.clone();
-        let mut wave = SineWave::new(frequency)
+        let wave = SineWave::new(frequency)
             .amplify(0.2)
             .pausable(true)
             .skippable()
@@ -218,7 +240,7 @@ impl Sound {
         mixer.add(wave);
         Self {
             frequency,
-            paused: pause_sound,
+            paused,
             dropped,
         }
     }
@@ -249,11 +271,22 @@ impl Sound {
     }
 }
 
-const STANDART8SCALE: SoundMap = SoundMap::new(
-    "Western A scale",
+//Arrays for the scales
+//TODO: read from file
+const WESTERN8A4SCALE: SoundMap = SoundMap::new(
+    "Western A Octave",
     &[
         440.00, 493.88, 523.25, 587.33, 659.26, 698.46, 783.99, 880.00,
     ],
+    7,
 );
 
-const SIMPLE3SCALE: SoundMap = SoundMap::new("Simple test scale", &[440.00, 587.33]);
+const SIMPLE2A4SCALE0: SoundMap = SoundMap::new("Simple test", &[440.00, 587.33], 2);
+
+const WESTERN8C4SCALE: SoundMap = SoundMap::new(
+    "Western C Octave",
+    &[
+        261.63, 293.67, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25,
+    ],
+    7,
+);
