@@ -1,9 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use eframe::egui;
+use eframe::{UserEvent, egui};
+use egui::emath::Numeric;
 use egui_winit::winit;
-use egui_winit::winit::application::ApplicationHandler;
-use egui_winit::winit::platform::scancode::PhysicalKeyExtScancode;
 use rodio::mixer::Mixer;
 use rodio::source::SineWave;
 use rodio::{MixerDeviceSink, Source};
@@ -21,14 +20,24 @@ fn main() -> eframe::Result {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([400.0, 300.0])
             .with_min_inner_size([300.0, 220.0]),
+        renderer: eframe::Renderer::Glow,
         ..Default::default()
     };
 
-    eframe::run_native(
-        "SimpSynth",
+    let eventloop = winit::event_loop::EventLoop::<eframe::UserEvent>::with_user_event().build().unwrap();
+    eventloop.set_control_flow(winit::event_loop::ControlFlow::Poll);
+
+
+    let mut app = eframe::create_native(
+        "SiMSynth",
         native_options,
         Box::new(|cc| Ok(Box::new(SiSApp::new(cc)))),
-    )
+        &eventloop
+    );
+
+    eventloop.run_app(&mut app)?;
+
+    Ok(())
 }
 
 struct SiSApp {
@@ -44,16 +53,16 @@ impl SiSApp {
         // for e.g. egui::PaintCallback.
         //let wtest = cc.display_handle().unwrap();
         //let rtest = wtest.as_raw();
-        cc.egui_ctx.enable_accesskit();
+        cc.winit_window().unwrap().request_redraw();
         Self {
             env: Environment::default(),
-            scales: vec![SIMPLE2A4SCALE0, WESTERN8A4SCALE, WESTERN8C4SCALE],
+            scales: vec![SIMPLE2A4SCALE0, WESTERN8A4SCALE, WESTERN8C4SCALE, WESTERN14C4SCALE],
         }
     }
 }
 
 #[allow(unused)]
-impl ApplicationHandler for SiSApp {
+impl winit::application::ApplicationHandler<UserEvent> for SiSApp {
     // TODO: Code to try to obtain keycodes. This implementation DOES NOT YET WORK
     fn window_event(
         &mut self,
@@ -61,13 +70,14 @@ impl ApplicationHandler for SiSApp {
         window_id: winit::window::WindowId,
         event: winit::event::WindowEvent,
     ) {
+        println!("something happened");
         if let winit::event::WindowEvent::KeyboardInput {
             device_id,
             event,
             is_synthetic,
         } = event
         {
-            println!("{}", event.physical_key.to_scancode().unwrap());
+            println!("{:#?}", event.physical_key);
         }
     }
 
@@ -81,20 +91,29 @@ impl eframe::App for SiSApp {
                 "Simple Music Synthetizer: {}",
                 VERSION //std::env::var("CARGO_PKG_VERSION").unwrap()
             ));
-            ui.horizontal_top(|ui| {
+
+            let mut y = 0;
+            while y < self.env.scale.row {
+                ui.horizontal_top(|ui| {
                 //Dynamic generation of Buttons for each sound
-                for sound in &self.env.buttons {
+                let mut x = 0;
+                while (x < self.env.scale.row) && (x + self.env.scale.row * y < u32::from_f64(self.env.scale.scale.len().to_f64())) {
+                    let pos = usize::from_f64((x + self.env.scale.row * y).to_f64());
                     if ui
                         .toggle_value(
-                            &mut sound.paused.load(Ordering::Relaxed),
-                            sound.frequency.to_string(),
+                            &mut self.env.buttons[pos].paused.load(Ordering::Relaxed),
+                            self.env.buttons[pos].frequency.to_string(),
                         )
                         .clicked()
                     {
-                        sound.toggle();
+                        self.env.buttons[pos].toggle();
                     }
+                    x+=1;
                 }
             });
+                y+=1;
+
+            };
             if ui.button("reload").clicked() {
                 self.env.reload();
             }
@@ -104,7 +123,7 @@ impl eframe::App for SiSApp {
             //let wtest = frame.winit_window().unwrap();
             let input = ui.input(|i| i.events.clone());
             if !input.is_empty() {
-                //println!("Something happened: {:?}", input);
+             //println!("Something happened: {:?}", input);
                 for ievent in input {
                     if let egui::Event::Key {
                         key: _,
@@ -139,6 +158,13 @@ impl eframe::App for SiSApp {
                     }
                 })
         });
+    }
+
+    
+
+    fn raw_input_hook(&mut self, _ctx: &egui::Context, _raw_input: &mut egui::RawInput) {
+        //if let egui::Event::Key { key, physical_key, pressed, repeat, modifiers } = _raw_input.events[0] {
+        //}
     }
 }
 
@@ -198,14 +224,15 @@ impl Default for Environment {
 pub struct SoundMap {
     name: &'static str,
     scale: &'static [f32],
-    //row: u32,
+    row: u32,
 }
 
 impl SoundMap {
-    const fn new(name: &'static str, scale: &'static [f32], _row: u32) -> Self {
+    const fn new(name: &'static str, scale: &'static [f32], row: u32) -> Self {
         Self {
             name,
-            scale, /*, row */
+            scale,
+            row
         }
     }
 }
@@ -290,3 +317,11 @@ const WESTERN8C4SCALE: SoundMap = SoundMap::new(
     ],
     7,
 );
+
+const WESTERN14C4SCALE: SoundMap = SoundMap::new(
+    "Western C two Octaves",
+    &[
+        261.63, 293.67, 329.63, 349.23, 392.00, 440.00, 493.88,
+        523.25, 587.33, 659.26, 698.46, 783.99, 880.00
+    ],
+    7);
