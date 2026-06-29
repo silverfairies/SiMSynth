@@ -1,6 +1,6 @@
 [package]
 name = "simple-music-synthesizer"
-version = "0.2.0-alpha"
+version = "0.3.0-alpha"
 authors = ["Melissa Vernigorenko"]
 edition = "2024"
 repository = "https://github.com/silverfairies/SimpSynth"
@@ -11,13 +11,10 @@ exclude = []
 include = ["**/*.rs", "!src/app.rs", "!src/music.rs"]
 
 [dependencies]
-eframe = { version = "0.34.3", features = ["glow"] }
-egui = "0.34.3"
-egui-winit = "0.34.3"
+eframe = { version = "0.34.3", features = ["default_fonts", "glow", "wayland", "x11"], default-features = false }
+egui-winit = { version = "0.34.3", default-features = false, features = ["wayland", "x11"] }
 env_logger = "0.11.10"
-rodio = { version = "0.22.2", default-features = false, features = [
-  "playback",
-] }
+rodio = { version = "0.22.2", default-features = false, features = ["64bit", "playback"] }
 
 [profile.dev.package."*"]
 opt-level = 3

@@ -46,14 +46,17 @@ struct SiSApp {
 }
 
 impl SiSApp {
-    fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_global_style.
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
         //let wtest = cc.display_handle().unwrap();
         //let rtest = wtest.as_raw();
-        cc.winit_window().unwrap().request_redraw();
+        //cc.winit_window().unwrap().request_redraw();
+        //let ct = &cc.get_proc_address;
+        //let ctc = ct.clone().unwrap();
+
         Self {
             env: Environment::default(),
             scales: vec![SIMPLE2A4SCALE0, WESTERN8A4SCALE, WESTERN8C4SCALE, WESTERN14C4SCALE],
@@ -102,7 +105,7 @@ impl eframe::App for SiSApp {
                     if ui
                         .toggle_value(
                             &mut self.env.buttons[pos].paused.load(Ordering::Relaxed),
-                            self.env.buttons[pos].frequency.to_string(),
+                            self.env.buttons[pos].get_name(),
                         )
                         .clicked()
                     {
@@ -295,6 +298,14 @@ impl Sound {
     fn change_state(&self, pause: bool) -> bool {
         self.paused.store(pause, Ordering::Relaxed);
         pause
+    }
+
+    pub fn get_name(&self) -> String {
+        let mut name = self.frequency.to_string();
+        if !name.contains('.') {
+            name.push_str(".00");
+        }
+        name
     }
 }
 

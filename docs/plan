@@ -9,8 +9,18 @@ No AI was used in the project. For new for me tasks some code may be coming from
 
 Other things to make:
 [X] UML diagram
-[ ] README.md
-[X] Choose licence (Apache or GPL?)
-[ ] Write documentation
-[ ] Translate documentation into german
+[X] README.md
+[X] Choose licence (Apache or GPL?) -> Chose MIT
+[X] Write documentation for school
+[X] Translate documentation for school into german
 [X] Upload to github
+
+[X] Button allignment
+[ ] Keyboard interaction
+[ ] Custom scales
+[ ] Dynamic notes
+[ ] Refactor
+[ ] Sound dampening after a few seconds
+
+[ ] Alternative sound backend
+[ ] New GUI library
